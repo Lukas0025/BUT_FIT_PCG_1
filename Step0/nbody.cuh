@@ -29,6 +29,15 @@ struct Particles
   /*                             TODO: Particle data structure optimized for use on GPU                               */
   /********************************************************************************************************************/
 
+  float* posX;
+  float* posY;
+  float* posZ;
+  
+  float* velX;
+  float* velY;
+  float* velZ;
+
+  float* weight;
 
 };
 
@@ -40,7 +49,10 @@ struct Velocities
   /********************************************************************************************************************/
   /*                             TODO: Velocities data structure optimized for use on GPU                             */
   /********************************************************************************************************************/
-
+  
+  float* x;
+  float* y;
+  float* z;
   
 };
 
