@@ -17,6 +17,8 @@
 
 #include "nbody.cuh"
 
+#define FLOAT_MIN 1.17549e-38
+
 /* Constants */
 constexpr float G                  = 6.67384e-11f;
 constexpr float COLLISION_DISTANCE = 0.01f;
@@ -30,6 +32,11 @@ constexpr float COLLISION_DISTANCE = 0.01f;
  */
 __global__ void calculateGravitationVelocity(Particles p, Velocities tmpVel, const unsigned N, float dt)
 {
+  // determinate ID of thread and total number of threads
+  const unsigned ix     = threadIdx.x + blockIdx.x * blockDim.x;
+  const unsigned stride = gridDim.x * blockDim.x;
+
+  // for simple indexing
   float* const pPosX   = p.posX;
   float* const pPosY   = p.posY;
   float* const pPosZ   = p.posZ;
@@ -42,7 +49,8 @@ __global__ void calculateGravitationVelocity(Particles p, Velocities tmpVel, con
   float* const tmpVelY = tmpVel.y;
   float* const tmpVelZ = tmpVel.z;
 
-  for (unsigned i = 0u; i < N; ++i) { // here determinate particle by ID
+  // iterate over all object for one threat
+  for (unsigned i = ix; i < N; i += stride) {
     float newVelX{};
     float newVelY{};
     float newVelZ{};
@@ -52,6 +60,7 @@ __global__ void calculateGravitationVelocity(Particles p, Velocities tmpVel, con
     const float posZ   = pPosZ[i];
     const float weight = pWeight[i];
 
+    // iterate over all objects
     for (unsigned j = 0u; j < N; ++j) {
       const float otherPosX   = pPosX[j];
       const float otherPosY   = pPosY[j];
@@ -63,9 +72,9 @@ __global__ void calculateGravitationVelocity(Particles p, Velocities tmpVel, con
       const float dz = otherPosZ - posZ;
 
       const float r2 = dx * dx + dy * dy + dz * dz;
-      const float r = std::sqrt(r2) + std::numeric_limits<float>::min();
+      const float r = sqrt(r2) + FLOAT_MIN; // to awoid zero div
 
-      const float f = G * weight * otherWeight / r2 + std::numeric_limits<float>::min();
+      const float f = G * weight * otherWeight / r2 + FLOAT_MIN; // to awoid zero div
 
       newVelX += (r > COLLISION_DISTANCE) ? dx / r * f : 0.f;
       newVelY += (r > COLLISION_DISTANCE) ? dy / r * f : 0.f;
@@ -76,6 +85,7 @@ __global__ void calculateGravitationVelocity(Particles p, Velocities tmpVel, con
     newVelY *= dt / weight;
     newVelZ *= dt / weight;
 
+    // write new final tmpVel
     tmpVelX[i] = newVelX;
     tmpVelY[i] = newVelY;
     tmpVelZ[i] = newVelZ;
@@ -91,7 +101,11 @@ __global__ void calculateGravitationVelocity(Particles p, Velocities tmpVel, con
  * @param dt     - Size of the time step
  */
 __global__ void calculateCollisionVelocity(Particles p, Velocities tmpVel, const unsigned N, float dt) {
-  
+  // determinate ID of thread and total number of threads
+  const unsigned ix     = threadIdx.x + blockIdx.x * blockDim.x;
+  const unsigned stride = gridDim.x * blockDim.x;
+
+  // for simple indexing
   float* const pPosX   = p.posX;
   float* const pPosY   = p.posY;
   float* const pPosZ   = p.posZ;
@@ -104,7 +118,8 @@ __global__ void calculateCollisionVelocity(Particles p, Velocities tmpVel, const
   float* const tmpVelY = tmpVel.y;
   float* const tmpVelZ = tmpVel.z;
 
-  for (unsigned i = 0u; i < N; ++i) {
+  // iterate over all object for one threat
+  for (unsigned i = ix; i < N; i += stride) {
     float newVelX{};
     float newVelY{};
     float newVelZ{};
@@ -117,6 +132,7 @@ __global__ void calculateCollisionVelocity(Particles p, Velocities tmpVel, const
     const float velZ   = pVelZ[i];
     const float weight = pWeight[i];
 
+    // iterate over all objects
     for (unsigned j = 0u; j < N; ++j) {
       const float otherPosX   = pPosX[j];
       const float otherPosY   = pPosY[j];
@@ -144,6 +160,7 @@ __global__ void calculateCollisionVelocity(Particles p, Velocities tmpVel, const
                  : 0.f;
     }
 
+    // update TMP vel by colisions
     tmpVelX[i] += newVelX;
     tmpVelY[i] += newVelY;
     tmpVelZ[i] += newVelZ;
@@ -159,7 +176,11 @@ __global__ void calculateCollisionVelocity(Particles p, Velocities tmpVel, const
  * @param dt     - Size of the time step
  */
 __global__ void updateParticles(Particles p, Velocities tmpVel, const unsigned N, float dt) {
-  
+  // determinate ID of thread and total number of threads
+  const unsigned ix     = threadIdx.x + blockIdx.x * blockDim.x;
+  const unsigned stride = gridDim.x * blockDim.x;
+
+  // for simple indexing
   float* const pPosX   = p.posX;
   float* const pPosY   = p.posY;
   float* const pPosZ   = p.posZ;
@@ -172,7 +193,8 @@ __global__ void updateParticles(Particles p, Velocities tmpVel, const unsigned N
   float* const tmpVelY = tmpVel.y;
   float* const tmpVelZ = tmpVel.z;
 
-  for (unsigned i = 0u; i < N; ++i) {
+  // iterate over all object for one threat
+  for (unsigned i = ix; i < N; i += stride) {
 
     float posX = pPosX[i];
     float posY = pPosY[i];
@@ -213,15 +235,40 @@ __global__ void updateParticles(Particles p, Velocities tmpVel, const unsigned N
  * @param N    - Number of particles
  */
 __global__ void centerOfMass(Particles p, float4* com, int* lock, const unsigned N) {
-  float4 d = {b.x - a.x,
-              b.y - a.y,
-              b.z - a.z,
-              (a.w + b.w) > 0.f ? (b.w / (a.w + b.w)) : 0.f};
+  // determinate ID of thread and total number of threads
+  const unsigned ix     = threadIdx.x + blockIdx.x * blockDim.x;
+  const unsigned stride = gridDim.x * blockDim.x;
 
-  a.x += d.x * d.w;
-  a.y += d.y * d.w;
-  a.z += d.z * d.w;
-  a.w += b.w;
+  // for simple indexing
+  float* const pPosX   = p.posX;
+  float* const pPosY   = p.posY;
+  float* const pPosZ   = p.posZ;
+  float* const pWeight = p.weight;
+
+  float4 local_com      = {0, 0, 0, 0};
+
+  // iterate over all object for one threat
+  for (unsigned i = ix; i < N; i += stride) {
+    const float4 d = {pPosX[i] - local_com.x,
+                      pPosY[i] - local_com.y,
+                      pPosZ[i] - local_com.z,
+                      (local_com.w + pWeight[i]) > 0.f ? (pWeight[i] / (local_com.w + pWeight[i])) : 0.f};
+    
+    local_com.x += d.x * d.w;
+    local_com.y += d.y * d.w;
+    local_com.z += d.z * d.w;
+    local_com.w += pWeight[i];
+  }
+
+  while (0 != (atomicCAS(lock, 0, 1))) {} //lock
+
+  com->x += local_com.x;
+  com->y += local_com.y;
+  com->z += local_com.z;
+  com->w += local_com.w;
+
+  atomicExch(lock, 0); //unlock
+
 }// end of centerOfMass
 //----------------------------------------------------------------------------------------------------------------------
 

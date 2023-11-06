@@ -89,13 +89,15 @@ int main(int argc, char **argv)
   /********************************************************************************************************************/
 
   // host particles
-  hParticles.posX   = static_cast<float*>(operator new[](N * sizeof(float), std::align_val_t{dataAlignment}));
-  hParticles.posY   = static_cast<float*>(operator new[](N * sizeof(float), std::align_val_t{dataAlignment}));
-  hParticles.posZ   = static_cast<float*>(operator new[](N * sizeof(float), std::align_val_t{dataAlignment}));
-  hParticles.velX   = static_cast<float*>(operator new[](N * sizeof(float), std::align_val_t{dataAlignment}));
-  hParticles.velY   = static_cast<float*>(operator new[](N * sizeof(float), std::align_val_t{dataAlignment}));
-  hParticles.velZ   = static_cast<float*>(operator new[](N * sizeof(float), std::align_val_t{dataAlignment}));
-  hParticles.weight = static_cast<float*>(operator new[](N * sizeof(float), std::align_val_t{dataAlignment}));
+  hParticles.posX   = static_cast<float*>(operator new[](N * sizeof(float)));
+  hParticles.posY   = static_cast<float*>(operator new[](N * sizeof(float)));
+  hParticles.posZ   = static_cast<float*>(operator new[](N * sizeof(float)));
+  hParticles.velX   = static_cast<float*>(operator new[](N * sizeof(float)));
+  hParticles.velY   = static_cast<float*>(operator new[](N * sizeof(float)));
+  hParticles.velZ   = static_cast<float*>(operator new[](N * sizeof(float)));
+  hParticles.weight = static_cast<float*>(operator new[](N * sizeof(float)));
+
+  float4 hFinalCom;
 
   /********************************************************************************************************************/
   /*                              TODO: Fill memory descriptor layout                                                 */
@@ -133,6 +135,8 @@ int main(int argc, char **argv)
 
   Particles  dParticles{};
   Velocities dTmpVelocities{};
+  float4    *dFinalCom;
+  int       *dLock;
 
   /********************************************************************************************************************/
   /*                                           GPU side memory allocation                                             */
@@ -145,12 +149,15 @@ int main(int argc, char **argv)
   CUDA_CALL(cudaMalloc(&(dParticles.velX),  N * sizeof(float)));
   CUDA_CALL(cudaMalloc(&(dParticles.velY),  N * sizeof(float)));
   CUDA_CALL(cudaMalloc(&(dParticles.velZ),  N * sizeof(float)));
-  CUDA_CALL(cudaMalloc(&(dParticles.wight), N * sizeof(float)));
+  CUDA_CALL(cudaMalloc(&(dParticles.weight), N * sizeof(float)));
 
   // dTmpVelocities
   CUDA_CALL(cudaMalloc(&(dTmpVelocities.x), N * sizeof(float)));
   CUDA_CALL(cudaMalloc(&(dTmpVelocities.y), N * sizeof(float)));
   CUDA_CALL(cudaMalloc(&(dTmpVelocities.z), N * sizeof(float)));
+
+  CUDA_CALL(cudaMalloc(&dFinalCom, sizeof(float4)));
+  CUDA_CALL(cudaMalloc(&dLock, sizeof(int)));
 
   /********************************************************************************************************************/
   /*                                           Memory transfer CPU -> GPU                                             */
@@ -164,9 +171,24 @@ int main(int argc, char **argv)
   CUDA_CALL(cudaMemcpy(dParticles.velY,   hParticles.velY,   N * sizeof(float), cudaMemcpyHostToDevice));
   CUDA_CALL(cudaMemcpy(dParticles.velZ,   hParticles.velZ,   N * sizeof(float), cudaMemcpyHostToDevice));
   CUDA_CALL(cudaMemcpy(dParticles.weight, hParticles.weight, N * sizeof(float), cudaMemcpyHostToDevice));
+
+  CUDA_CALL(cudaMemset(dFinalCom, 0, sizeof(float4)));
+  CUDA_CALL(cudaMemset(dLock, 0, sizeof(int)));
   
   // wait until done
   CUDA_CALL(cudaDeviceSynchronize());
+
+  // Lambda for checking if we should write current step to the file
+  auto shouldWrite = [writeFreq](unsigned s) -> bool
+  {
+    return writeFreq > 0u && (s % writeFreq == 0u);
+  };
+
+  // Lamda for getting record number
+  auto getRecordNum = [writeFreq](unsigned s) -> unsigned
+  {
+    return s / writeFreq;
+  };
 
   // Start measurement
   const auto start = std::chrono::steady_clock::now();
@@ -175,15 +197,20 @@ int main(int argc, char **argv)
     if (shouldWrite(s)) {
       const auto recordNum = getRecordNum(s);
 
-      float4 com = centerOfMass(particles, N);
+      centerOfMass <<< 32, 64 >>> (dParticles, dFinalCom, dLock, N);
+
+      CUDA_CALL(cudaMemcpy(&hFinalCom, dFinalCom, sizeof(float4), cudaMemcpyDeviceToHost));
+      CUDA_CALL(cudaMemset(dFinalCom, 0, sizeof(float4)));
 
       h5Helper.writeParticleData(recordNum);
-      h5Helper.writeCom(com, recordNum);
+      h5Helper.writeCom(hFinalCom, recordNum);
     }
 
-    calculateGravitationVelocity(particles, tmpVelocities, N, dt);
-    calculateCollisionVelocity(particles, tmpVelocities, N, dt);
-    updateParticle(particles, tmpVelocities, N, dt);
+    calculateGravitationVelocity <<< 32, 64 >>> (dParticles, dTmpVelocities, N, dt);
+      CUDA_CALL(cudaDeviceSynchronize());
+    calculateCollisionVelocity   <<< 32, 64 >>> (dParticles, dTmpVelocities, N, dt);
+      CUDA_CALL(cudaDeviceSynchronize());
+    updateParticles              <<< 32, 64 >>> (dParticles, dTmpVelocities, N, dt);
   }
 
   // Wait for all CUDA kernels to finish
@@ -201,6 +228,13 @@ int main(int argc, char **argv)
   /*                                     TODO: Memory transfer GPU -> CPU                                             */
   /********************************************************************************************************************/
 
+  CUDA_CALL(cudaMemcpy(hParticles.posX,   dParticles.posX,   N * sizeof(float), cudaMemcpyDeviceToHost));
+  CUDA_CALL(cudaMemcpy(hParticles.posY,   dParticles.posY,   N * sizeof(float), cudaMemcpyDeviceToHost));
+  CUDA_CALL(cudaMemcpy(hParticles.posZ,   dParticles.posZ,   N * sizeof(float), cudaMemcpyDeviceToHost));
+  CUDA_CALL(cudaMemcpy(hParticles.velX,   dParticles.velX,   N * sizeof(float), cudaMemcpyDeviceToHost));
+  CUDA_CALL(cudaMemcpy(hParticles.velY,   dParticles.velY,   N * sizeof(float), cudaMemcpyDeviceToHost));
+  CUDA_CALL(cudaMemcpy(hParticles.velZ,   dParticles.velZ,   N * sizeof(float), cudaMemcpyDeviceToHost));
+  CUDA_CALL(cudaMemcpy(hParticles.weight, dParticles.weight, N * sizeof(float), cudaMemcpyDeviceToHost));
 
 
   // Compute reference center of mass on CPU
@@ -212,7 +246,15 @@ int main(int argc, char **argv)
               refCenterOfMass.z,
               refCenterOfMass.w);
 
-  std::printf("Center of mass on GPU: %f, %f, %f, %f\n", 0.f, 0.f, 0.f, 0.f);
+  centerOfMass <<< 32, 64 >>> (dParticles, dFinalCom, dLock, N);
+  
+  CUDA_CALL(cudaMemcpy(&hFinalCom, dFinalCom, sizeof(float4), cudaMemcpyDeviceToHost));
+
+  std::printf("Center of mass on GPU: %f, %f, %f, %f\n",
+              hFinalCom.x,
+              hFinalCom.y,
+              hFinalCom.z,
+              hFinalCom.w);
 
   // Writing final values to the file
   h5Helper.writeComFinal(refCenterOfMass);
@@ -222,19 +264,29 @@ int main(int argc, char **argv)
   /*                                     TODO: GPU side memory deallocation                                           */
   /********************************************************************************************************************/
 
-  
+  CUDA_CALL(cudaFree(dParticles.posX));
+  CUDA_CALL(cudaFree(dParticles.posY));
+  CUDA_CALL(cudaFree(dParticles.posZ));
+  CUDA_CALL(cudaFree(dParticles.velX));
+  CUDA_CALL(cudaFree(dParticles.velY));
+  CUDA_CALL(cudaFree(dParticles.velZ));
+  CUDA_CALL(cudaFree(dParticles.weight));
+
+  CUDA_CALL(cudaFree(dTmpVelocities.x));
+  CUDA_CALL(cudaFree(dTmpVelocities.y));
+  CUDA_CALL(cudaFree(dTmpVelocities.z));
 
   /********************************************************************************************************************/
   /*                                           CPU side memory deallocation                                           */
   /********************************************************************************************************************/
 
-  operator delete[](hParticles.posX,   std::align_val_t{dataAlignment});
-  operator delete[](hParticles.posY,   std::align_val_t{dataAlignment});
-  operator delete[](hParticles.posZ,   std::align_val_t{dataAlignment});
-  operator delete[](hParticles.velX,   std::align_val_t{dataAlignment});
-  operator delete[](hParticles.velY,   std::align_val_t{dataAlignment});
-  operator delete[](hParticles.velZ,   std::align_val_t{dataAlignment});
-  operator delete[](hParticles.weight, std::align_val_t{dataAlignment});
+  operator delete[](hParticles.posX);
+  operator delete[](hParticles.posY);
+  operator delete[](hParticles.posZ);
+  operator delete[](hParticles.velX);
+  operator delete[](hParticles.velY);
+  operator delete[](hParticles.velZ);
+  operator delete[](hParticles.weight);
 
 
 }// end of main
