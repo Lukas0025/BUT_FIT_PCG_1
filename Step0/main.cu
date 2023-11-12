@@ -69,6 +69,12 @@ int main(int argc, char **argv)
   // Size of the reduction CUDA grid - number of blocks
   const unsigned redGridDim = (redTotalThreadCount + redBlockDim - 1) / redBlockDim;
 
+  dim3 simBlockDimDim3(simBlockDim, 1, 1);
+  dim3 simGridDimDim3 (simGridDim,  1, 1);
+
+  dim3 redBlockDimDim3(redBlockDim, 1, 1);
+  dim3 redGridDimDim3 (redGridDim,  1, 1);
+
   // Log benchmark setup
   std::printf("       NBODY GPU simulation\n"
               "N:                       %u\n"
@@ -197,7 +203,7 @@ int main(int argc, char **argv)
     if (shouldWrite(s)) {
       const auto recordNum = getRecordNum(s);
 
-      centerOfMass <<< 32, 64 >>> (dParticles, dFinalCom, dLock, N);
+      centerOfMass <<< redGridDimDim3, redBlockDimDim3 >>> (dParticles, dFinalCom, dLock, N);
 
       CUDA_CALL(cudaMemcpy(&hFinalCom, dFinalCom, sizeof(float4), cudaMemcpyDeviceToHost));
       CUDA_CALL(cudaMemset(dFinalCom, 0, sizeof(float4)));
@@ -206,11 +212,11 @@ int main(int argc, char **argv)
       h5Helper.writeCom(hFinalCom, recordNum);
     }
 
-    calculateGravitationVelocity <<< 32, 64 >>> (dParticles, dTmpVelocities, N, dt);
-      CUDA_CALL(cudaDeviceSynchronize());
-    calculateCollisionVelocity   <<< 32, 64 >>> (dParticles, dTmpVelocities, N, dt);
-      CUDA_CALL(cudaDeviceSynchronize());
-    updateParticles              <<< 32, 64 >>> (dParticles, dTmpVelocities, N, dt);
+    calculateGravitationVelocity <<< simGridDimDim3, simBlockDimDim3 >>> (dParticles, dTmpVelocities, N, dt);
+    CUDA_CALL(cudaDeviceSynchronize());
+    calculateCollisionVelocity   <<< simGridDimDim3, simBlockDimDim3 >>> (dParticles, dTmpVelocities, N, dt);
+    CUDA_CALL(cudaDeviceSynchronize());
+    updateParticles              <<< simGridDimDim3, simBlockDimDim3 >>> (dParticles, dTmpVelocities, N, dt);
   }
 
   // Wait for all CUDA kernels to finish
@@ -246,7 +252,7 @@ int main(int argc, char **argv)
               refCenterOfMass.z,
               refCenterOfMass.w);
 
-  centerOfMass <<< 32, 64 >>> (dParticles, dFinalCom, dLock, N);
+  centerOfMass <<< redGridDimDim3, redBlockDimDim3 >>> (dParticles, dFinalCom, dLock, N);
   
   CUDA_CALL(cudaMemcpy(&hFinalCom, dFinalCom, sizeof(float4), cudaMemcpyDeviceToHost));
 
@@ -257,7 +263,7 @@ int main(int argc, char **argv)
               hFinalCom.w);
 
   // Writing final values to the file
-  h5Helper.writeComFinal(refCenterOfMass);
+  h5Helper.writeComFinal(hFinalCom);
   h5Helper.writeParticleDataFinal();
 
   /********************************************************************************************************************/

@@ -228,6 +228,24 @@ __global__ void updateParticles(Particles p, Velocities tmpVel, const unsigned N
 //----------------------------------------------------------------------------------------------------------------------
 
 /**
+ * Kernel to calculate particles center of mass
+ * @param p    - particles
+ * @param N    - Number of particles
+ */
+__device__ static inline void centerOfMassReduction(float4* a, const float4* b)
+{
+  float4 d = {b->x - a->x,
+              b->y - a->y,
+              b->z - a->z,
+              (a->w + b->w) > 0.f ? (b->w / (a->w + b->w)) : 0.f};
+
+  a->x += d.x * d.w;
+  a->y += d.y * d.w;
+  a->z += d.z * d.w;
+  a->w += b->w;
+}
+
+/**
  * CUDA kernel to calculate particles center of mass
  * @param p    - particles
  * @param com  - pointer to a center of mass
@@ -245,30 +263,29 @@ __global__ void centerOfMass(Particles p, float4* com, int* lock, const unsigned
   float* const pPosZ   = p.posZ;
   float* const pWeight = p.weight;
 
-  float4 local_com      = {0, 0, 0, 0};
+  float4 local_com = {0, 0, 0, 0};
 
   // iterate over all object for one threat
   for (unsigned i = ix; i < N; i += stride) {
-    const float4 d = {pPosX[i] - local_com.x,
-                      pPosY[i] - local_com.y,
-                      pPosZ[i] - local_com.z,
-                      (local_com.w + pWeight[i]) > 0.f ? (pWeight[i] / (local_com.w + pWeight[i])) : 0.f};
-    
-    local_com.x += d.x * d.w;
-    local_com.y += d.y * d.w;
-    local_com.z += d.z * d.w;
-    local_com.w += pWeight[i];
+    const float4 particle = {pPosX[i], pPosY[i], pPosZ[i], pWeight[i]};
+
+    centerOfMassReduction(&local_com, &particle);
   }
 
-  while (0 != (atomicCAS(lock, 0, 1))) {} //lock
+  __syncthreads(); // do not enter in critical section to early
+  if (threadIdx.x == 0) while (atomicCAS(lock,0,1) != 0); //lock  but only by one threat on block
+  __syncthreads(); // wait for critical section
 
-  com->x += local_com.x;
-  com->y += local_com.y;
-  com->z += local_com.z;
-  com->w += local_com.w;
+  for (unsigned t = 0; t < blockDim.x; t++) {
+    if (t == threadIdx.x) { // only one thread in block in one time
+      centerOfMassReduction(com, &local_com);
+    }
 
-  atomicExch(lock, 0); //unlock
+    //__threadfence();
+    __syncthreads(); // wait until threat done
+  }
 
+  if (threadIdx.x == 0) atomicExch(lock, 0); // unlock
 }// end of centerOfMass
 //----------------------------------------------------------------------------------------------------------------------
 
