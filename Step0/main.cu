@@ -181,8 +181,6 @@ int main(int argc, char **argv)
   CUDA_CALL(cudaMemset(dFinalCom, 0, sizeof(float4)));
   CUDA_CALL(cudaMemset(dLock, 0, sizeof(int)));
   
-  // wait until done
-  CUDA_CALL(cudaDeviceSynchronize());
 
   // Lambda for checking if we should write current step to the file
   auto shouldWrite = [writeFreq](unsigned s) -> bool

@@ -17,6 +17,8 @@
 
 #include "nbody.cuh"
 
+#define FLOAT_MIN 1.17549e-38
+
 /* Constants */
 constexpr float G                  = 6.67384e-11f;
 constexpr float COLLISION_DISTANCE = 0.01f;
@@ -30,13 +32,121 @@ constexpr float COLLISION_DISTANCE = 0.01f;
  */
 __global__ void calculateVelocity(Particles pIn, Particles pOut, const unsigned N, float dt)
 {
-  /********************************************************************************************************************/
-  /*          TODO: CUDA kernel to calculate new particles velocity and position, collapse previous kernels           */
-  /********************************************************************************************************************/
+  // determinate ID of thread and total number of threads
+  const unsigned ix     = threadIdx.x + blockIdx.x * blockDim.x;
+  const unsigned stride = gridDim.x * blockDim.x;
+
+  // for simple indexing
+  float* const inPosX    = pIn.posX;
+  float* const inPosY    = pIn.posY;
+  float* const inPosZ    = pIn.posZ;
+  float* const inVelX    = pIn.velX;
+  float* const inVelY    = pIn.velY;
+  float* const inVelZ    = pIn.velZ;
+  float* const inWeight  = pIn.weight;
+
+  float* const outPosX   = pOut.posX;
+  float* const outPosY   = pOut.posY;
+  float* const outPosZ   = pOut.posZ;
+  float* const outVelX   = pOut.velX;
+  float* const outVelY   = pOut.velY;
+  float* const outVelZ   = pOut.velZ;
+  float* const outWeight = pOut.weight;
+  
+  // iterate over all object for one threat
+  for (unsigned i = ix; i < N; i += stride) {
+    float newVelX = 0;
+    float newVelY = 0;
+    float newVelZ = 0;
+
+    float colisionVelX = 0;
+    float colisionVelY = 0;
+    float colisionVelZ = 0;
+
+    const float posX   = inPosX[i];
+    const float posY   = inPosY[i];
+    const float posZ   = inPosZ[i];
+    const float velX   = inVelX[i];
+    const float velY   = inVelY[i];
+    const float velZ   = inVelZ[i];
+    const float weight = inWeight[i];
+
+    // iterate over all objects
+    for (unsigned j = 0u; j < N; ++j) {
+      const float otherPosX   = inPosX[j];
+      const float otherPosY   = inPosY[j];
+      const float otherPosZ   = inPosZ[j];
+      const float otherVelX   = inVelX[j];
+      const float otherVelY   = inVelY[j];
+      const float otherVelZ   = inVelZ[j];
+      const float otherWeight = inWeight[j];
+
+      const float dx = otherPosX - posX;
+      const float dy = otherPosY - posY;
+      const float dz = otherPosZ - posZ;
+
+      const float r2 = dx * dx + dy * dy + dz * dz;
+      const float r = sqrt(r2) + FLOAT_MIN; // to awoid zero div
+
+      const float f = G * weight * otherWeight / r2 + FLOAT_MIN; // to awoid zero div
+
+      // calculate new velocity
+      if (r > COLLISION_DISTANCE) {
+        newVelX += dx / r * f;
+        newVelY += dy / r * f;
+        newVelZ += dz / r * f;
+      } else if (r > 0.f) {
+        colisionVelX += (((weight * velX - otherWeight * velX + 2.f * otherWeight * otherVelX) / (weight + otherWeight)) - velX);
+        colisionVelY += (((weight * velY - otherWeight * velY + 2.f * otherWeight * otherVelY) / (weight + otherWeight)) - velY);
+        colisionVelZ += (((weight * velZ - otherWeight * velZ + 2.f * otherWeight * otherVelZ) / (weight + otherWeight)) - velZ);
+      }
+    }
+
+    newVelX *= dt / weight;
+    newVelY *= dt / weight;
+    newVelZ *= dt / weight;
+
+    //colisition update speed
+
+    newVelX += colisionVelX;
+    newVelY += colisionVelY;
+    newVelZ += colisionVelZ;
+
+    //update position
+
+    outPosX[i]   = posX + newVelX * dt;
+    outPosY[i]   = posY + newVelY * dt;
+    outPosZ[i]   = posZ + newVelZ * dt;
+
+    outVelX[i]   = velX + newVelX;
+    outVelY[i]   = velY + newVelY;
+    outVelZ[i]   = velZ + newVelZ;
+    outWeight[i] = weight;
+  }  
+
+
 
   
 }// end of calculate_gravitation_velocity
 //----------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Kernel to calculate particles center of mass
+ * @param p    - particles
+ * @param N    - Number of particles
+ */
+__device__ static inline void centerOfMassReduction(float4* a, const float4* b)
+{
+  float4 d = {b->x - a->x,
+              b->y - a->y,
+              b->z - a->z,
+              (a->w + b->w) > 0.f ? (b->w / (a->w + b->w)) : 0.f};
+
+  a->x += d.x * d.w;
+  a->y += d.y * d.w;
+  a->z += d.z * d.w;
+  a->w += b->w;
+}
 
 /**
  * CUDA kernel to calculate particles center of mass
@@ -45,9 +155,40 @@ __global__ void calculateVelocity(Particles pIn, Particles pOut, const unsigned 
  * @param lock - pointer to a user-implemented lock
  * @param N    - Number of particles
  */
-__global__ void centerOfMass(Particles p, float4* com, int* lock, const unsigned N)
-{
+__global__ void centerOfMass(Particles p, float4* com, int* lock, const unsigned N) {
+  // determinate ID of thread and total number of threads
+  const unsigned ix     = threadIdx.x + blockIdx.x * blockDim.x;
+  const unsigned stride = gridDim.x * blockDim.x;
 
+  // for simple indexing
+  float* const pPosX   = p.posX;
+  float* const pPosY   = p.posY;
+  float* const pPosZ   = p.posZ;
+  float* const pWeight = p.weight;
+
+  float4 local_com = {0, 0, 0, 0};
+
+  // iterate over all object for one threat
+  for (unsigned i = ix; i < N; i += stride) {
+    const float4 particle = {pPosX[i], pPosY[i], pPosZ[i], pWeight[i]};
+
+    centerOfMassReduction(&local_com, &particle);
+  }
+
+  __syncthreads(); // do not enter in critical section to early
+  if (threadIdx.x == 0) while (atomicCAS(lock,0,1) != 0); //lock  but only by one threat on block
+  __syncthreads(); // wait for critical section
+
+  for (unsigned t = 0; t < blockDim.x; t++) {
+    if (t == threadIdx.x) { // only one thread in block in one time
+      centerOfMassReduction(com, &local_com);
+    }
+
+    //__threadfence();
+    __syncthreads(); // wait until threat done
+  }
+
+  if (threadIdx.x == 0) atomicExch(lock, 0); // unlock
 }// end of centerOfMass
 //----------------------------------------------------------------------------------------------------------------------
 
