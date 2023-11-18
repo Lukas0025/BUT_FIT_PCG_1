@@ -4,7 +4,7 @@
  * @author    Name Surname \n
  *            Faculty of Information Technology \n
  *            Brno University of Technology \n
- *            xlogin00@fit.vutbr.cz
+ *            xpleva07@vutbr.cz
  *
  * @brief     PCG Assignment 1
  *
@@ -243,21 +243,21 @@ int main(int argc, char **argv)
     /******************************************************************************************************************/
     if (shouldWrite(s)) {
       // copy particles positions from GPU to CPU STREAM 0
-      CUDA_CALL(cudaMemcpyAsync(hParticles.posX,   dParticles[srcIdx].posX,   N * sizeof(float), cudaMemcpyDeviceToHost));
-      CUDA_CALL(cudaMemcpyAsync(hParticles.posY,   dParticles[srcIdx].posY,   N * sizeof(float), cudaMemcpyDeviceToHost));
-      CUDA_CALL(cudaMemcpyAsync(hParticles.posZ,   dParticles[srcIdx].posZ,   N * sizeof(float), cudaMemcpyDeviceToHost));
-      CUDA_CALL(cudaMemcpyAsync(hParticles.velX,   dParticles[srcIdx].velX,   N * sizeof(float), cudaMemcpyDeviceToHost));
-      CUDA_CALL(cudaMemcpyAsync(hParticles.velY,   dParticles[srcIdx].velY,   N * sizeof(float), cudaMemcpyDeviceToHost));
-      CUDA_CALL(cudaMemcpyAsync(hParticles.velZ,   dParticles[srcIdx].velZ,   N * sizeof(float), cudaMemcpyDeviceToHost));
+      CUDA_CALL(cudaMemcpyAsync(hParticles.posX,   dParticles[srcIdx].posX,   N * sizeof(float), cudaMemcpyDeviceToHost, stream[0]));
+      CUDA_CALL(cudaMemcpyAsync(hParticles.posY,   dParticles[srcIdx].posY,   N * sizeof(float), cudaMemcpyDeviceToHost, stream[0]));
+      CUDA_CALL(cudaMemcpyAsync(hParticles.posZ,   dParticles[srcIdx].posZ,   N * sizeof(float), cudaMemcpyDeviceToHost, stream[0]));
+      CUDA_CALL(cudaMemcpyAsync(hParticles.velX,   dParticles[srcIdx].velX,   N * sizeof(float), cudaMemcpyDeviceToHost, stream[0]));
+      CUDA_CALL(cudaMemcpyAsync(hParticles.velY,   dParticles[srcIdx].velY,   N * sizeof(float), cudaMemcpyDeviceToHost, stream[0]));
+      CUDA_CALL(cudaMemcpyAsync(hParticles.velZ,   dParticles[srcIdx].velZ,   N * sizeof(float), cudaMemcpyDeviceToHost, stream[0]));
 
       // calculate center of mass and copy to CPU STREAM 1
-      centerOfMass <<< redGridDimDim3, redBlockDimDim3, redSharedMemSize>>> (dParticles[srcIdx], dCenterOfMass, dLock, N);
-      CUDA_CALL(cudaMemcpyAsync(hCenterOfMass, dCenterOfMass, sizeof(float4), cudaMemcpyDeviceToHost));
-      CUDA_CALL(cudaMemsetAsync(dCenterOfMass, 0, sizeof(float4)));
+      centerOfMass <<< redGridDimDim3, redBlockDimDim3, redSharedMemSize, stream[1]>>> (dParticles[srcIdx], dCenterOfMass, dLock, N);
+      CUDA_CALL(cudaMemcpyAsync(hCenterOfMass, dCenterOfMass, sizeof(float4), cudaMemcpyDeviceToHost, stream[1]));
+      CUDA_CALL(cudaMemsetAsync(dCenterOfMass, 0, sizeof(float4), stream[1]));
     }
 
     // claclulate new particles pocition STREAM 2
-    calculateVelocity <<< simGridDimDim3, simBlockDimDim3, sharedMemSize >>> (dParticles[srcIdx], dParticles[dstIdx], N, dt);
+    calculateVelocity <<< simGridDimDim3, simBlockDimDim3, sharedMemSize, stream[2]>>> (dParticles[srcIdx], dParticles[dstIdx], N, dt);
 
     // wait until all asic jobs done
     CUDA_CALL(cudaEventRecord(stopEvent, 0));

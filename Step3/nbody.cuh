@@ -4,7 +4,7 @@
  * @author    Name Surname \n
  *            Faculty of Information Technology \n
  *            Brno University of Technology \n
- *            xlogin00@fit.vutbr.cz
+ *            xpleva07@vutbr.cz
  *
  * @brief     PCG Assignment 1
  *

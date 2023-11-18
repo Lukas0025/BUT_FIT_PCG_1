@@ -22,7 +22,7 @@ run: build build/input.h5
 	./nbody1 81920 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5 && \
 	./nbody2 81920 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5 && \
 	./nbody3 81920 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5 && \
-	./nbody4 81920 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5 && \
+	./nbody4 81920 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5
 
 test: build
 	./runTests.sh build/nbody0
