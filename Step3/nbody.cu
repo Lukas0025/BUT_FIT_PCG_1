@@ -44,12 +44,19 @@ __global__ void calculateVelocity(Particles pIn, Particles pOut, const unsigned 
   float* const inPosX    = pIn.posX;
   float* const inPosY    = pIn.posY;
   float* const inPosZ    = pIn.posZ;
+  float* const inVelX    = pIn.velX;
+  float* const inVelY    = pIn.velY;
   float* const inVelZ    = pIn.velZ;
+  float* const inWeight  = pIn.weight;
 
   // in faster shared memory
-  float* const inWeight  = s;
-  float* const inVelX    = &(inWeight[N]);
-  float* const inVelY    = &(inVelX[N]);
+  float* const SinPosX    = s;
+  float* const SinPosY    = &(SinPosX[BLOCK_SIZE]);
+  float* const SinPosZ    = &(SinPosY[BLOCK_SIZE]);
+  float* const SinVelX    = &(SinPosZ[BLOCK_SIZE]);
+  float* const SinVelY    = &(SinVelX[BLOCK_SIZE]);
+  float* const SinVelZ    = &(SinVelY[BLOCK_SIZE]);
+  float* const SinWeight  = &(SinVelZ[BLOCK_SIZE]);
 
   float* const outPosX   = pOut.posX;
   float* const outPosY   = pOut.posY;
@@ -59,15 +66,7 @@ __global__ void calculateVelocity(Particles pIn, Particles pOut, const unsigned 
   float* const outVelZ   = pOut.velZ;
   float* const outWeight = pOut.weight;
 
-  // load particles to shared memory
-  for (unsigned i = threadIdx.x; i < N; i += blockDim.x) {
-    inVelX[i]    = pIn.velX[i];
-    inVelY[i]    = pIn.velY[i];
-    inWeight[i]  = pIn.weight[i];
-  }
-
-  // wait until load particles to shared memory
-  __syncthreads();
+  const unsigned int numBlocks = (N + BLOCK_SIZE - 1) / BLOCK_SIZE;
   
   // iterate over all object for one threat
   for (unsigned i = ix; i < N; i += stride) {
