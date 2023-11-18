@@ -206,7 +206,7 @@ int main(int argc, char **argv)
   /********************************************************************************************************************/
   /*                                  TODO: Set dynamic shared memory computation                                     */
   /********************************************************************************************************************/
-  const std::size_t sharedMemSize = 7 * N * sizeof(float);
+  const std::size_t sharedMemSize = 3 * N * sizeof(float);
   const std::size_t redSharedMemSize = (redBlockDim / warpSize + 0.5) * sizeof(float4);   // you can use warpSize variable
 
   // Lambda for checking if we should write current step to the file

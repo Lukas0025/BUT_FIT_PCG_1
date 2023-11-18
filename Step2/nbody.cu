@@ -40,13 +40,15 @@ __global__ void calculateVelocity(Particles pIn, Particles pOut, const unsigned 
   extern __shared__ float s[];
 
   // for simple indexing
-  float* const inPosX    = s;
-  float* const inPosY    = &(inPosX[N]);
-  float* const inPosZ    = &(inPosY[N]);
-  float* const inVelX    = &(inPosZ[N]);
+  float* const inPosX    = pIn.posX;
+  float* const inPosY    = pIn.posY;
+  float* const inPosZ    = pIn.posZ;
+  float* const inVelZ    = pIn.velZ;
+
+  // in faster shared memory
+  float* const inWeight  = s;
+  float* const inVelX    = &(inWeight[N]);
   float* const inVelY    = &(inVelX[N]);
-  float* const inVelZ    = &(inVelY[N]);
-  float* const inWeight  = &(inVelZ[N]);
 
   float* const outPosX   = pOut.posX;
   float* const outPosY   = pOut.posY;
@@ -58,12 +60,8 @@ __global__ void calculateVelocity(Particles pIn, Particles pOut, const unsigned 
 
   // load particles to shared memory
   for (unsigned i = threadIdx.x; i < N; i += blockDim.x) {
-    inPosX[i]    = pIn.posX[i];
-    inPosY[i]    = pIn.posY[i];
-    inPosZ[i]    = pIn.posZ[i];
     inVelX[i]    = pIn.velX[i];
     inVelY[i]    = pIn.velY[i];
-    inVelZ[i]    = pIn.velZ[i];
     inWeight[i]  = pIn.weight[i];
   }
 
