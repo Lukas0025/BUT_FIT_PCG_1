@@ -1,0 +1,253 @@
+make[1]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1'
+mkdir build
+cmake -D CMAKE_BUILD_TYPE=Release -S . -B build
+-- The C compiler identification is GNU 11.3.0
+-- The CXX compiler identification is GNU 11.3.0
+-- The CUDA compiler identification is NVIDIA 12.2.91
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /apps/all/GCCcore/11.3.0/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /apps/all/GCCcore/11.3.0/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Detecting CUDA compiler ABI info
+-- Detecting CUDA compiler ABI info - done
+-- Check for working CUDA compiler: /apps/all/CUDA/12.2.0/bin/nvcc - skipped
+-- Detecting CUDA compile features
+-- Detecting CUDA compile features - done
+-- Found CUDAToolkit: /apps/all/CUDA/12.2.0/include (found version "12.2.91") 
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - found
+-- Found Threads: TRUE  
+-- Found HDF5: /apps/all/HDF5/1.12.2-gompi-2022a/lib/libhdf5.so;/apps/all/Szip/2.1.1-GCCcore-11.3.0/lib/libsz.so;/apps/all/zlib/1.2.12-GCCcore-11.3.0/lib/libz.so;/usr/lib64/libdl.so;/usr/lib64/libm.so;/usr/lib64/libm.so;/usr/lib64/libpthread.so (found version "1.12.2") found components: C HL 
+-- Found OpenMP_C: -fopenmp (found version "4.5") 
+-- Found OpenMP_CXX: -fopenmp (found version "4.5") 
+-- Found OpenMP: TRUE (found version "4.5")  
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/xpleva07/BUT_FIT_PCG_1/build
+cd build && make
+make[2]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[3]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+[  3%] Building CXX object CMakeFiles/gen.dir/Commons/gen.cpp.o
+[  6%] Linking CXX executable gen
+make[4]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+[  6%] Built target gen
+make[4]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+[  9%] Building CXX object CMakeFiles/nbodyCpu.dir/Cpu/main.cpp.o
+[ 12%] Building CXX object CMakeFiles/nbodyCpu.dir/Cpu/nbody.cpp.o
+[ 16%] Building CXX object CMakeFiles/nbodyCpu.dir/Commons/h5Helper.cpp.o
+[ 19%] Linking CXX executable nbodyCpu
+make[4]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+[ 19%] Built target nbodyCpu
+make[4]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+[ 22%] Building CUDA object CMakeFiles/nbody0.dir/Step0/main.cu.o
+[ 25%] Building CUDA object CMakeFiles/nbody0.dir/Step0/nbody.cu.o
+[ 29%] Building CXX object CMakeFiles/nbody0.dir/Commons/h5Helper.cpp.o
+[ 32%] Linking CUDA device code CMakeFiles/nbody0.dir/cmake_device_link.o
+[ 35%] Linking CXX executable nbody0
+make[4]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+[ 35%] Built target nbody0
+make[4]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+[ 38%] Building CUDA object CMakeFiles/nbody1.dir/Step1/main.cu.o
+[ 41%] Building CUDA object CMakeFiles/nbody1.dir/Step1/nbody.cu.o
+[ 45%] Building CXX object CMakeFiles/nbody1.dir/Commons/h5Helper.cpp.o
+[ 48%] Linking CUDA device code CMakeFiles/nbody1.dir/cmake_device_link.o
+[ 51%] Linking CXX executable nbody1
+make[4]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+[ 51%] Built target nbody1
+make[4]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+[ 54%] Building CUDA object CMakeFiles/nbody2.dir/Step2/main.cu.o
+[ 58%] Building CUDA object CMakeFiles/nbody2.dir/Step2/nbody.cu.o
+[ 61%] Building CXX object CMakeFiles/nbody2.dir/Commons/h5Helper.cpp.o
+[ 64%] Linking CUDA device code CMakeFiles/nbody2.dir/cmake_device_link.o
+[ 67%] Linking CXX executable nbody2
+make[4]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+[ 67%] Built target nbody2
+make[4]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+[ 70%] Building CUDA object CMakeFiles/nbody3.dir/Step3/main.cu.o
+[ 74%] Building CUDA object CMakeFiles/nbody3.dir/Step3/nbody.cu.o
+[ 77%] Building CXX object CMakeFiles/nbody3.dir/Commons/h5Helper.cpp.o
+[ 80%] Linking CUDA device code CMakeFiles/nbody3.dir/cmake_device_link.o
+[ 83%] Linking CXX executable nbody3
+make[4]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+[ 83%] Built target nbody3
+make[4]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[4]: Entering directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+[ 87%] Building CUDA object CMakeFiles/nbody4.dir/Step4/main.cu.o
+[ 90%] Building CUDA object CMakeFiles/nbody4.dir/Step4/nbody.cu.o
+[ 93%] Building CXX object CMakeFiles/nbody4.dir/Commons/h5Helper.cpp.o
+[ 96%] Linking CUDA device code CMakeFiles/nbody4.dir/cmake_device_link.o
+[100%] Linking CXX executable nbody4
+make[4]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+[100%] Built target nbody4
+make[3]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+make[2]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1/build'
+./runTests.sh build/nbody0
+Two particles on circular trajectory
+Peak in possition difference:  1.1392605214714108e-06
+OK
+Points on line without collision
+Peak in possition difference:  0
+OK
+Points on line with one collision
+Peak in possition difference:  0
+OK
+Points on line with several collision
+Peak in possition difference:  0
+OK
+Symetry globe test
+Maximum distance: 0.300078658832214
+Minimum distance: 0.299601743869772
+Distance difference: 0.0004769149624420099 < 0.01 - OK
+
+Maximum angle: 0.017806355186346438 deg
+Minimum angle: 0.0 deg
+OK
+Stability globe test
+Maximum distance: 0.3895600813837751
+Minimum distance: 0.3893034876144295
+Distance difference: 0.0002565937693456144 < 0.01 - OK
+
+Maximum angle: 0.018837574809099915 deg
+Minimum angle: 0.0 deg
+OK
+./runTests.sh build/nbody1
+Two particles on circular trajectory
+Peak in possition difference:  0.0013650985
+OK
+Points on line without collision
+Peak in possition difference:  0
+OK
+Points on line with one collision
+Peak in possition difference:  0
+OK
+Points on line with several collision
+Peak in possition difference:  0
+OK
+Symetry globe test
+Maximum distance: 0.30007865167006775
+Minimum distance: 0.2996017455402468
+Distance difference: 0.00047690612982093095 < 0.01 - OK
+
+Maximum angle: 0.017769374869801072 deg
+Minimum angle: 0.0 deg
+OK
+Stability globe test
+Maximum distance: 4.427878464733367e-08
+Minimum distance: 1.1128062855805175e-09
+Distance difference: 4.316597836175316e-08 < 0.01 - OK
+
+Maximum angle: 0.019615140863940273 deg
+Minimum angle: 0.0 deg
+OK
+./runTests.sh build/nbody2
+Two particles on circular trajectory
+Peak in possition difference:  0.0013650985
+OK
+Points on line without collision
+Peak in possition difference:  0
+OK
+Points on line with one collision
+Peak in possition difference:  0
+OK
+Points on line with several collision
+Peak in possition difference:  0
+OK
+Symetry globe test
+Maximum distance: 0.30007865167006775
+Minimum distance: 0.2996017455402468
+Distance difference: 0.00047690612982093095 < 0.01 - OK
+
+Maximum angle: 0.017769374869801072 deg
+Minimum angle: 0.0 deg
+OK
+Stability globe test
+Maximum distance: 4.427878464733367e-08
+Minimum distance: 1.1128062855805175e-09
+Distance difference: 4.316597836175316e-08 < 0.01 - OK
+
+Maximum angle: 0.019615140863940273 deg
+Minimum angle: 0.0 deg
+OK
+./runTests.sh build/nbody3
+Two particles on circular trajectory
+Peak in possition difference:  0.0013650985
+OK
+Points on line without collision
+Peak in possition difference:  0
+OK
+Points on line with one collision
+Peak in possition difference:  0
+OK
+Points on line with several collision
+Peak in possition difference:  0
+OK
+Symetry globe test
+Maximum distance: 0.30007865167006775
+Minimum distance: 0.2996017455402468
+Distance difference: 0.00047690612982093095 < 0.01 - OK
+
+Maximum angle: 0.017769374869801072 deg
+Minimum angle: 0.0 deg
+OK
+Stability globe test
+Maximum distance: 4.427878464733367e-08
+Minimum distance: 1.1128062855805175e-09
+Distance difference: 4.316597836175316e-08 < 0.01 - OK
+
+Maximum angle: 0.019615140863940273 deg
+Minimum angle: 0.0 deg
+OK
+./runTests.sh build/nbody4
+Two particles on circular trajectory
+Peak in possition difference:  0.0013650985
+OK
+Points on line without collision
+Peak in possition difference:  0
+OK
+Points on line with one collision
+Peak in possition difference:  0
+OK
+Points on line with several collision
+Peak in possition difference:  0
+OK
+Symetry globe test
+Maximum distance: 0.30007865167006775
+Minimum distance: 0.2996017455402468
+Distance difference: 0.00047690612982093095 < 0.01 - OK
+
+Maximum angle: 0.017769374869801072 deg
+Minimum angle: 0.0 deg
+OK
+Stability globe test
+Maximum distance: 4.427878464733367e-08
+Minimum distance: 1.1128062855805175e-09
+Distance difference: 4.316597836175316e-08 < 0.01 - OK
+
+Maximum angle: 0.019615140863940273 deg
+Minimum angle: 0.0 deg
+OK
+make[1]: Leaving directory `/home/xpleva07/BUT_FIT_PCG_1'

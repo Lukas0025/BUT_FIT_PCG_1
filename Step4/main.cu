@@ -185,6 +185,17 @@ int main(int argc, char **argv)
   /********************************************************************************************************************/
   CUDA_CALL(cudaMemset(dCenterOfMass, 0, sizeof(float4)));
 
+  unsigned nStreams = 3;
+
+  cudaStream_t stream[nStreams];
+  for (int i = 0; i < nStreams; i ++) {
+    CUDA_CALL(cudaStreamCreate(&stream[i]));
+  }
+
+  cudaEvent_t stopEvent, startEvent;
+  CUDA_CALL(cudaEventCreate(&stopEvent));
+  CUDA_CALL(cudaEventCreate(&startEvent));
+  
   // Get CUDA device warp size
   int device;
   int warpSize;
@@ -224,22 +235,40 @@ int main(int argc, char **argv)
     const unsigned srcIdx = s % 2;        // source particles index
     const unsigned dstIdx = (s + 1) % 2;  // destination particles index
 
+    // mark all under for wait
+    CUDA_CALL(cudaEventRecord(startEvent, 0));
+
     /******************************************************************************************************************/
     /*                TODO: GPU kernels invocation with correctly set dynamic memory size and stream                  */
     /******************************************************************************************************************/
     if (shouldWrite(s)) {
+      // copy particles positions from GPU to CPU STREAM 0
+      CUDA_CALL(cudaMemcpyAsync(hParticles.posX,   dParticles[srcIdx].posX,   N * sizeof(float), cudaMemcpyDeviceToHost));
+      CUDA_CALL(cudaMemcpyAsync(hParticles.posY,   dParticles[srcIdx].posY,   N * sizeof(float), cudaMemcpyDeviceToHost));
+      CUDA_CALL(cudaMemcpyAsync(hParticles.posZ,   dParticles[srcIdx].posZ,   N * sizeof(float), cudaMemcpyDeviceToHost));
+      CUDA_CALL(cudaMemcpyAsync(hParticles.velX,   dParticles[srcIdx].velX,   N * sizeof(float), cudaMemcpyDeviceToHost));
+      CUDA_CALL(cudaMemcpyAsync(hParticles.velY,   dParticles[srcIdx].velY,   N * sizeof(float), cudaMemcpyDeviceToHost));
+      CUDA_CALL(cudaMemcpyAsync(hParticles.velZ,   dParticles[srcIdx].velZ,   N * sizeof(float), cudaMemcpyDeviceToHost));
+
+      // calculate center of mass and copy to CPU STREAM 1
+      centerOfMass <<< redGridDimDim3, redBlockDimDim3, redSharedMemSize>>> (dParticles[srcIdx], dCenterOfMass, dLock, N);
+      CUDA_CALL(cudaMemcpyAsync(hCenterOfMass, dCenterOfMass, sizeof(float4), cudaMemcpyDeviceToHost));
+      CUDA_CALL(cudaMemsetAsync(dCenterOfMass, 0, sizeof(float4)));
+    }
+
+    // claclulate new particles pocition STREAM 2
+    calculateVelocity <<< simGridDimDim3, simBlockDimDim3, sharedMemSize >>> (dParticles[srcIdx], dParticles[dstIdx], N, dt);
+
+    // wait until all asic jobs done
+    CUDA_CALL(cudaEventRecord(stopEvent, 0));
+    CUDA_CALL(cudaEventSynchronize(stopEvent));
+
+    if (shouldWrite(s)) {
       const auto recordNum = getRecordNum(s);
-
-      centerOfMass <<< redGridDimDim3, redBlockDimDim3, redSharedMemSize >>> (dParticles[srcIdx], dCenterOfMass, dLock, N);
-
-      CUDA_CALL(cudaMemcpy(hCenterOfMass, dCenterOfMass, sizeof(float4), cudaMemcpyDeviceToHost));
-      CUDA_CALL(cudaMemset(dCenterOfMass, 0, sizeof(float4)));
-
+      
       h5Helper.writeParticleData(recordNum);
       h5Helper.writeCom(*hCenterOfMass, recordNum);
     }
-
-    calculateVelocity <<< simGridDimDim3, simBlockDimDim3, sharedMemSize >>> (dParticles[srcIdx], dParticles[dstIdx], N, dt);
   }
 
   const unsigned resIdx = steps % 2;    // result particles index
@@ -295,8 +324,12 @@ int main(int argc, char **argv)
   /********************************************************************************************************************/
   /*                                  TODO: CUDA streams and events destruction                                       */
   /********************************************************************************************************************/
+  for (int i = 0; i < nStreams; i ++) {
+    CUDA_CALL(cudaStreamDestroy(stream[i]));
+  }
 
-
+  CUDA_CALL( cudaEventDestroy(startEvent) );
+  CUDA_CALL( cudaEventDestroy(stopEvent) );
 
   /********************************************************************************************************************/
   /*                                     TODO: GPU side memory deallocation                                           */

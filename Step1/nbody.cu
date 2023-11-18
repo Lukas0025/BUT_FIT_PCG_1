@@ -55,13 +55,13 @@ __global__ void calculateVelocity(Particles pIn, Particles pOut, const unsigned 
   
   // iterate over all object for one threat
   for (unsigned i = ix; i < N; i += stride) {
-    float newVelX = 0;
-    float newVelY = 0;
-    float newVelZ = 0;
+    float newVelX = 0.f;
+    float newVelY = 0.f;
+    float newVelZ = 0.f;
 
-    float colisionVelX = 0;
-    float colisionVelY = 0;
-    float colisionVelZ = 0;
+    float colisionVelX = 0.f;
+    float colisionVelY = 0.f;
+    float colisionVelZ = 0.f;
 
     const float posX   = inPosX[i];
     const float posY   = inPosY[i];
@@ -91,15 +91,16 @@ __global__ void calculateVelocity(Particles pIn, Particles pOut, const unsigned 
       const float f = G * weight * otherWeight / r2 + FLOAT_MIN; // to awoid zero div
 
       // calculate new velocity
-      if (r > COLLISION_DISTANCE) {
-        newVelX += dx / r * f;
-        newVelY += dy / r * f;
-        newVelZ += dz / r * f;
-      } else if (r > 0.f) {
-        colisionVelX += (((weight * velX - otherWeight * velX + 2.f * otherWeight * otherVelX) / (weight + otherWeight)) - velX);
-        colisionVelY += (((weight * velY - otherWeight * velY + 2.f * otherWeight * otherVelY) / (weight + otherWeight)) - velY);
-        colisionVelZ += (((weight * velZ - otherWeight * velZ + 2.f * otherWeight * otherVelZ) / (weight + otherWeight)) - velZ);
-      }
+      newVelX += (r > COLLISION_DISTANCE) ? dx / r * f : 0;
+      newVelY += (r > COLLISION_DISTANCE) ? dy / r * f : 0;
+      newVelZ += (r > COLLISION_DISTANCE) ? dz / r * f : 0;
+      
+      colisionVelX += (r > 0.f && r < COLLISION_DISTANCE) ? 
+        (((weight * velX - otherWeight * velX + 2.f * otherWeight * otherVelX) / (weight + otherWeight)) - velX) : 0;
+      colisionVelY += (r > 0.f && r < COLLISION_DISTANCE) ?
+        (((weight * velY - otherWeight * velY + 2.f * otherWeight * otherVelY) / (weight + otherWeight)) - velY) : 0;
+      colisionVelZ += (r > 0.f && r < COLLISION_DISTANCE) ? 
+        (((weight * velZ - otherWeight * velZ + 2.f * otherWeight * otherVelZ) / (weight + otherWeight)) - velZ) : 0;
     }
 
     newVelX *= dt / weight;
@@ -114,14 +115,14 @@ __global__ void calculateVelocity(Particles pIn, Particles pOut, const unsigned 
 
     //update position
 
-    outPosX[i]   = posX + newVelX * dt;
-    outPosY[i]   = posY + newVelY * dt;
-    outPosZ[i]   = posZ + newVelZ * dt;
-
     outVelX[i]   = velX + newVelX;
     outVelY[i]   = velY + newVelY;
     outVelZ[i]   = velZ + newVelZ;
     outWeight[i] = weight;
+
+    outPosX[i]   = posX + outVelX[i] * dt;
+    outPosY[i]   = posY + outVelY[i] * dt;
+    outPosZ[i]   = posZ + outVelZ[i] * dt;
   }  
 
 

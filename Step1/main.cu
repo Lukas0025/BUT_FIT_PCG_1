@@ -207,11 +207,12 @@ int main(int argc, char **argv)
       CUDA_CALL(cudaMemcpy(&hFinalCom, dFinalCom, sizeof(float4), cudaMemcpyDeviceToHost));
       CUDA_CALL(cudaMemset(dFinalCom, 0, sizeof(float4)));
 
-      h5Helper.writeParticleData(recordNum);
+      //h5Helper.writeParticleData(recordNum);
       h5Helper.writeCom(hFinalCom, recordNum);
     }
 
     calculateVelocity <<< simGridDimDim3, simBlockDimDim3 >>> (dParticles[srcIdx], dParticles[dstIdx], N, dt);
+    CUDA_CALL(cudaDeviceSynchronize());
   }
 
   // Wait for all CUDA kernels to finish

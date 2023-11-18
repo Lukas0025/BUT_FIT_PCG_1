@@ -222,7 +222,7 @@ int main(int argc, char **argv)
       CUDA_CALL(cudaMemcpy(hCenterOfMass, dCenterOfMass, sizeof(float4), cudaMemcpyDeviceToHost));
       CUDA_CALL(cudaMemset(dCenterOfMass, 0, sizeof(float4)));
 
-      h5Helper.writeParticleData(recordNum);
+      //h5Helper.writeParticleData(recordNum);
       h5Helper.writeCom(*hCenterOfMass, recordNum);
     }
 
