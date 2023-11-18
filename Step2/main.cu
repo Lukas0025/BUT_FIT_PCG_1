@@ -180,7 +180,7 @@ int main(int argc, char **argv)
   /********************************************************************************************************************/
   /*                                  TODO: Set dynamic shared memory computation                                     */
   /********************************************************************************************************************/
-  const std::size_t sharedMemSize = 3 * N * sizeof(float);
+  const std::size_t sharedMemSize = 7 * BLOCK_SIZE * sizeof(float);
 
   // Lambda for checking if we should write current step to the file
   auto shouldWrite = [writeFreq](unsigned s) -> bool

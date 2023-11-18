@@ -87,36 +87,59 @@ __global__ void calculateVelocity(Particles pIn, Particles pOut, const unsigned 
     const float velZ   = inVelZ[i];
     const float weight = inWeight[i];
 
-    // iterate over all objects
-    for (unsigned j = 0u; j < N; ++j) {
-      const float otherPosX   = inPosX[j];
-      const float otherPosY   = inPosY[j];
-      const float otherPosZ   = inPosZ[j];
-      const float otherVelX   = inVelX[j];
-      const float otherVelY   = inVelY[j];
-      const float otherVelZ   = inVelZ[j];
-      const float otherWeight = inWeight[j];
+     // iterate over all objects
+    for (unsigned block = 0; block < numBlocks; ++block) {
+      const unsigned int start = block * BLOCK_SIZE;
+      const unsigned int end   = min(start + BLOCK_SIZE, N);
+      const unsigned int size  = end - start;
 
-      const float dx = otherPosX - posX;
-      const float dy = otherPosY - posY;
-      const float dz = otherPosZ - posZ;
+      // load particles to shared memory
+      for (unsigned j = start + threadIdx.x; j < end; j += blockDim.x) {
+        SinPosX[j - start]    = pIn.posX[j];
+        SinPosY[j - start]    = pIn.posY[j];
+        SinPosZ[j - start]    = pIn.posZ[j];
+        SinVelX[j - start]    = pIn.velX[j];
+        SinVelY[j - start]    = pIn.velY[j];
+        SinVelZ[j - start]    = pIn.velZ[j];
+        SinWeight[j - start]  = pIn.weight[j];
+      }
 
-      const float r2 = dx * dx + dy * dy + dz * dz;
-      const float r = sqrt(r2) + FLOAT_MIN; // to awoid zero div
+      // wait until load particles to shared memory
+      __syncthreads();
 
-      const float f = G * weight * otherWeight / r2 + FLOAT_MIN; // to awoid zero div
+      for (unsigned j = 0; j < size; ++j) {
+        const float otherPosX   = SinPosX[j];
+        const float otherPosY   = SinPosY[j];
+        const float otherPosZ   = SinPosZ[j];
+        const float otherVelX   = SinVelX[j];
+        const float otherVelY   = SinVelY[j];
+        const float otherVelZ   = SinVelZ[j];
+        const float otherWeight = SinWeight[j];
 
-      // calculate new velocity
-      newVelX += (r > COLLISION_DISTANCE) ? dx / r * f : 0;
-      newVelY += (r > COLLISION_DISTANCE) ? dy / r * f : 0;
-      newVelZ += (r > COLLISION_DISTANCE) ? dz / r * f : 0;
-      
-      colisionVelX += (r > 0.f && r < COLLISION_DISTANCE) ? 
-        (((weight * velX - otherWeight * velX + 2.f * otherWeight * otherVelX) / (weight + otherWeight)) - velX) : 0;
-      colisionVelY += (r > 0.f && r < COLLISION_DISTANCE) ?
-        (((weight * velY - otherWeight * velY + 2.f * otherWeight * otherVelY) / (weight + otherWeight)) - velY) : 0;
-      colisionVelZ += (r > 0.f && r < COLLISION_DISTANCE) ? 
-        (((weight * velZ - otherWeight * velZ + 2.f * otherWeight * otherVelZ) / (weight + otherWeight)) - velZ) : 0;
+        const float dx = otherPosX - posX;
+        const float dy = otherPosY - posY;
+        const float dz = otherPosZ - posZ;
+
+        const float r2 = dx * dx + dy * dy + dz * dz;
+        const float r = sqrt(r2) + FLOAT_MIN; // to awoid zero div
+
+        const float f = G * weight * otherWeight / r2 + FLOAT_MIN; // to awoid zero div
+
+        // calculate new velocity
+        newVelX += (r > COLLISION_DISTANCE) ? dx / r * f : 0;
+        newVelY += (r > COLLISION_DISTANCE) ? dy / r * f : 0;
+        newVelZ += (r > COLLISION_DISTANCE) ? dz / r * f : 0;
+        
+        colisionVelX += (r > 0.f && r < COLLISION_DISTANCE) ? 
+          (((weight * velX - otherWeight * velX + 2.f * otherWeight * otherVelX) / (weight + otherWeight)) - velX) : 0;
+        colisionVelY += (r > 0.f && r < COLLISION_DISTANCE) ?
+          (((weight * velY - otherWeight * velY + 2.f * otherWeight * otherVelY) / (weight + otherWeight)) - velY) : 0;
+        colisionVelZ += (r > 0.f && r < COLLISION_DISTANCE) ? 
+          (((weight * velZ - otherWeight * velZ + 2.f * otherWeight * otherVelZ) / (weight + otherWeight)) - velZ) : 0;
+      }
+
+      // wait until done to not rewrite shared memory
+      __syncthreads();
     }
 
     newVelX *= dt / weight;

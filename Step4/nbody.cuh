@@ -16,6 +16,8 @@
 #ifndef NBODY_CUH
 #define NBODY_CUH
 
+#define BLOCK_SIZE 1024
+
 #include <cuda_runtime.h>
 
 #include "h5Helper.h"
