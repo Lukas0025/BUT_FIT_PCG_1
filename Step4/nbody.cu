@@ -40,6 +40,7 @@ __global__ void calculateVelocity(Particles pIn, Particles pOut, const unsigned 
   //shared particles
   extern __shared__ float s[];
 
+  // for simple indexing
   float* const inPosX    = pIn.posX;
   float* const inPosY    = pIn.posY;
   float* const inPosZ    = pIn.posZ;
@@ -65,7 +66,7 @@ __global__ void calculateVelocity(Particles pIn, Particles pOut, const unsigned 
   float* const outVelZ   = pOut.velZ;
   float* const outWeight = pOut.weight;
 
-  const unsigned int numBlocks = (N + BLOCK_SIZE - 1) / BLOCK_SIZE;
+  const unsigned numBlocks = (N - 1) / BLOCK_SIZE + 1;
   
   // iterate over all object for one threat
   for (unsigned i = ix; i < N; i += stride) {
@@ -85,21 +86,26 @@ __global__ void calculateVelocity(Particles pIn, Particles pOut, const unsigned 
     const float velZ   = inVelZ[i];
     const float weight = inWeight[i];
 
+    // copy block size
+    const unsigned relBlockDim = (i - threadIdx.x + blockDim.x > N) ? N - i + threadIdx.x : blockDim.x;
+
     // iterate over all objects
     for (unsigned block = 0; block < numBlocks; ++block) {
       const unsigned int start = block * BLOCK_SIZE;
-      const unsigned int end   = min(start + BLOCK_SIZE, N);
-      const unsigned int size  = end - start;
+      const unsigned int size  = (start + BLOCK_SIZE > N) ? N - start : BLOCK_SIZE;
+
+      // wait until done to not rewrite shared memory
+      __syncthreads();
 
       // load particles to shared memory
-      for (unsigned j = start + threadIdx.x; j < end; j += blockDim.x) {
-        SinPosX[j - start]    = pIn.posX[j];
-        SinPosY[j - start]    = pIn.posY[j];
-        SinPosZ[j - start]    = pIn.posZ[j];
-        SinVelX[j - start]    = pIn.velX[j];
-        SinVelY[j - start]    = pIn.velY[j];
-        SinVelZ[j - start]    = pIn.velZ[j];
-        SinWeight[j - start]  = pIn.weight[j];
+      for (unsigned j = threadIdx.x; j < size; j += relBlockDim) {
+        SinPosX[j]    = inPosX[j + start];
+        SinPosY[j]    = inPosY[j + start];
+        SinPosZ[j]    = inPosZ[j + start];
+        SinVelX[j]    = inVelX[j + start];
+        SinVelY[j]    = inVelY[j + start];
+        SinVelZ[j]    = inVelZ[j + start];
+        SinWeight[j]  = inWeight[j + start];
       }
 
       // wait until load particles to shared memory
@@ -135,9 +141,6 @@ __global__ void calculateVelocity(Particles pIn, Particles pOut, const unsigned 
         colisionVelZ += (r > 0.f && r < COLLISION_DISTANCE) ? 
           (((weight * velZ - otherWeight * velZ + 2.f * otherWeight * otherVelZ) / (weight + otherWeight)) - velZ) : 0;
       }
-
-      // wait until done to not rewrite shared memory
-      __syncthreads();
     }
 
     newVelX *= dt / weight;

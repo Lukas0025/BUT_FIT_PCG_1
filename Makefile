@@ -14,22 +14,26 @@ debug:
 
 build/input.h5:
 	cd build && \
-	./gen 81920 input.h5
+	./gen 4096 input.h5
 
 run: build build/input.h5
 	cd build && \
-	./nbody0 81920 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5 && \
-	./nbody1 81920 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5 && \
-	./nbody2 81920 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5 && \
-	./nbody3 81920 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5 && \
-	./nbody4 81920 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5
+	./nbody0 4096 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5 && \
+	./nbody1 4096 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5 && \
+	./nbody2 4096 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5 && \
+	./nbody3 4096 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5 && \
+	./nbody4 4096 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5
 
-test: build
+test: build build/input.h5
 	./runTests.sh build/nbody0
 	./runTests.sh build/nbody1
 	./runTests.sh build/nbody2
 	./runTests.sh build/nbody3
 	./runTests.sh build/nbody4
+	cd build && \
+	./nbodyCpu 4096 0.01f 100 512 5 2048 128 input.h5 outputCpu.h5 && \
+	./nbody4 4096 0.01f 100 512 5 2048 128 input.h5 outputGpu.h5 && \
+	../compare.sh outputCpu.h5 outputGpu.h5
 
 vtest:
 	$(MAKE) test > testout.txt
