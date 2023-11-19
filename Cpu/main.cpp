@@ -1,10 +1,10 @@
 /**
  * @file      main.cu
  *
- * @author    Name Surname \n
+ * @author    Lukáš Plevač \n
  *            Faculty of Information Technology \n
  *            Brno University of Technology \n
- *            xlogin00@fit.vutbr.cz
+ *            xpleva07@fit.vutbr.cz
  *
  * @brief     PCG Assignment 1
  *

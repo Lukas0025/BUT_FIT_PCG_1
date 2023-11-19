@@ -1,7 +1,7 @@
 /**
  * @file      main.cu
  *
- * @author    Name Surname \n
+ * @author    Lukáš Plevač \n
  *            Faculty of Information Technology \n
  *            Brno University of Technology \n
  *            xpleva07@vutbr.cz
